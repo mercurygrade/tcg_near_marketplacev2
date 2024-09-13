@@ -1,12 +1,19 @@
+"use client";
 import React from "react";
 import { VscVerifiedFilled } from "react-icons/vsc";
 import { IoLocationOutline } from "react-icons/io5";
 import { GiPathDistance } from "react-icons/gi";
-import { BiCheckbox } from "react-icons/bi";
 
 import colors from "components/constants/colors";
+import CheckboxBlank from "./CheckboxBlank";
+import { NFT } from "components/@types";
 
-export default function Items({ data = [] }) {
+interface ItemsProps {
+  setSelected: React.Dispatch<React.SetStateAction<any>>;
+  data: NFT[];
+}
+
+export default function Items({ data = [], setSelected }: ItemsProps) {
   const nfts = [
     {
       metadata_id: "nft.examples.testnet:34ac2fc383a22991b626d131c72a6a48",
@@ -60,12 +67,16 @@ export default function Items({ data = [] }) {
 
   return (
     <div className="grid grid-cols-6 gap-7">
-      {nfts.map(({ media }, index) => (
+      {nfts.map((item, index) => (
         <div className="bg-white shadow-lg rounded-lg overflow-hidden w-52">
           <div className="relative">
-            {/* <BiCheckbox className="absolute top-2 right-2 " /> */}
+            <CheckboxBlank
+              className="absolute top-2 right-2"
+              itemx={item}
+              setSelected={setSelected}
+            />
             <img
-              src={media}
+              src={item.media}
               alt="tree image"
               className="w-full h-40 object-cover"
             />

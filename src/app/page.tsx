@@ -1,6 +1,5 @@
-import Header from "components/components/Header";
-import Items from "components/components/Items";
 import { Metadata } from "next";
+import Dashboard from "components/screens/Dashboard";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -10,12 +9,6 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     // <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-    <div className="gap-5">
-      <Header />
-      <div className="flex flex-col p-10 gap-5">
-        <p className="font-bold">NFTs</p>
-        <Items />
-      </div>
-    </div>
+    <Dashboard />
   );
 }

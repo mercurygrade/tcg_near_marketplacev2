@@ -3,15 +3,18 @@ export default [
     title: "Overview",
   },
   {
-    title: "Overview",
+    title: "Statistics",
   },
   {
-    title: "Overview",
+    title: "Trip History",
   },
   {
-    title: "Overview",
+    title: "Budgets and NFTs",
   },
   {
-    title: "Overview",
+    title: "Settings",
+  },
+  {
+    title: "Marketplace",
   },
 ];
