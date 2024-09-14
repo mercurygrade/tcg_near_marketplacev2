@@ -1,5 +1,5 @@
 "use client";
-import { NFT } from "components/@types";
+import { NFT } from "@/@types";
 import React, { useState } from "react";
 import { FaCheck } from "react-icons/fa";
 

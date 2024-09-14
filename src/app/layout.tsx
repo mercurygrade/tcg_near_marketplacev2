@@ -1,9 +1,9 @@
 "use client";
-import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { QueryClient, QueryClientProvider } from "react-query";
-
 import "./globals.css";
+import "@near-wallet-selector/modal-ui/styles.css";
+
+import { QueryClient, QueryClientProvider } from "react-query";
 import { MintbaseWalletContextProvider } from "@mintbase-js/react";
 
 const geistSans = localFont({
@@ -48,19 +48,14 @@ export default function RootLayout({
   return (
     <QueryClientProvider client={queryClient}>
       <MintbaseWalletContextProvider {...MintbaseWalletSetup}>
-        <html>
-          <body>
-            <div className="min-h-screen">{children}</div>
+        <html lang="en">
+          <body
+            className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          >
+            {children}
           </body>
         </html>
       </MintbaseWalletContextProvider>
     </QueryClientProvider>
-    // <html lang="en">
-    //   <body
-    //     className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-    //   >
-    //     {children}
-    //   </body>
-    // </html>
   );
 }
