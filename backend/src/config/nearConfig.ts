@@ -3,7 +3,7 @@ const path = require("path");
 const homedir = require("os").homedir();
 
 const CREDENTIALS_DIR = ".near-credentials";
-export const CONTRACT_NAME = "yusufdimari2.testnet";
+export const CONTRACT_NAME = "<contract-name>.testnet";
 
 const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
 
