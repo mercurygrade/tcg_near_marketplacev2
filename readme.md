@@ -73,7 +73,7 @@ To set up the backend server, follow these steps:
 
 3. Start the server:
    ```bash
-   npm run start
+   npm run dev:ts
    ```
 
 ### Prerequisites

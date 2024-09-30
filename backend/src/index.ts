@@ -1,12 +1,10 @@
-import express, { Request, Response } from "express";
 import cors from "cors";
-var admin = require("firebase-admin");
+import express, { Request, Response } from "express";
 
+import { profile, nft, account, wallet } from "./routes/";
+
+var admin = require("firebase-admin");
 const config = require("../credentials.json");
-import account from "./routes/account";
-import nft from "./routes/nft";
-import profile from "./routes/profile";
-import wallet from "./routes/wallet";
 
 const PORT = process.env.PORT || 5005;
 const BASE_URL = "/TrustID/v1";
