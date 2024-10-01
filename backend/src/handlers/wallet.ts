@@ -10,7 +10,7 @@ export const createWallet = async (req: Request, res: Response) => {
     if (!username || !uid)
       return res.json({ success: false, message: "No username provided" });
     const { data, error } = await createAccount(username.toString(), "0");
-    if (data?.final_execution_status != "EXECUTED" || error) {
+    if (data?.response?.final_execution_status != "EXECUTED" || error) {
       return res.status(400).json({
         success: false,
         message: "Error creating account",
@@ -23,13 +23,21 @@ export const createWallet = async (req: Request, res: Response) => {
       isWalletConnected: true,
       walletUsername: username,
     };
-
-    await docRef.update(updatedDoc);
-    const doc = await docRef.get();
+    let doc = await docRef.get();
+    if (doc.exists) {
+      await docRef.update(updatedDoc);
+    } else {
+      await docRef.set(updatedDoc);
+    }
+    doc = await docRef.get();
 
     res.json({
       success: true,
-      data: { user: { ...user, ...doc.data() }, data },
+      data: {
+        user: { ...user, ...doc.data() },
+        ...data.response,
+        seedPhrase: data.seedPhrase,
+      },
     });
     walletAddress = username;
   } catch (error: any) {

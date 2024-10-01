@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Alert } from "react-native";
+import * as Clipboard from "expo-clipboard";
 
 import { urls } from "../utils";
 import { request } from "../api/useApi";
@@ -8,6 +9,12 @@ import { useAppContext } from "../provider/Appprovider";
 export default function useWallet() {
   const { user, setUser } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
+
+  const onSeedPhraseCopied = (seedPhrase: string) => {
+    if (typeof seedPhrase != "string") return;
+    Clipboard.setStringAsync(seedPhrase);
+    console.log(seedPhrase, "copied to Clipboard");
+  };
 
   //creaete a new Wallet for the user
   const connectToWallet = async (username: string) => {
@@ -28,9 +35,21 @@ export default function useWallet() {
           .replace("{{username}}", username)
           .replace("{{userId}}", user.uid)
       );
-      Alert.alert("Success", "Wallet Created");
+      if (data.error) return console.log("data", data);
+
       setUser(data.data.user);
-      return data.data.data.final_execution_status == "EXECUTED";
+      Alert.alert(
+        "Wallet Created",
+        `Your SeedPhrase will only be displayed once, please keep it securely:\n '${data.data.seedPhrase}'`,
+        [
+          {
+            text: "Copy to Clipboard",
+            onPress: () => onSeedPhraseCopied(data.data.seedPhrase),
+          },
+        ]
+      );
+      console.log(data.data);
+      return data.data.final_execution_status == "EXECUTED";
     } catch (error) {
       console.error(error.response.data);
       Alert.alert("Error", error.response.data.error);

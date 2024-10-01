@@ -1,8 +1,10 @@
 import { connect, KeyPair, keyStores, utils } from "near-api-js";
 import { FinalExecutionOutcome } from "near-api-js/lib/providers";
+import { generateSeedPhrase } from "near-seed-phrase";
 const path = require("path");
 const homedir = require("os").homedir();
 
+export type KeyPairString = `ed25519:${string}` | `secp256k1:${string}`;
 const CREDENTIALS_DIR = ".near-credentials";
 const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
 const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
@@ -30,12 +32,12 @@ export async function createAccount(
 ) {
   const near = await connect({ ...config, keyStore });
   const creatorAccount = await near.account("yusufdimari.testnet");
-  const keyPair = KeyPair.fromRandom("ed25519");
-  const publicKey = keyPair.getPublicKey().toString();
+  const { publicKey, secretKey, seedPhrase } = generateSeedPhrase();
+  const keyPair = KeyPair.fromString(secretKey as KeyPairString);
   await keyStore.setKey(config.networkId, newAccountId, keyPair);
 
   let res: {
-    data: FinalExecutionOutcome | null;
+    data: { response: FinalExecutionOutcome | null; seedPhrase: string } | null;
     error: Error | string | null;
   } = {
     data: null,
@@ -54,7 +56,7 @@ export async function createAccount(
     });
     if (response) {
       const error = extractErrorMessage(response);
-      res = { data: response, error };
+      res = { data: { seedPhrase, response }, error };
     }
   } catch (error: any) {
     res.error = error;
