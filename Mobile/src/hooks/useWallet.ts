@@ -35,7 +35,10 @@ export default function useWallet() {
           .replace("{{username}}", username)
           .replace("{{userId}}", user.uid)
       );
-      if (data.error) return console.log("data", data);
+      if (data.error) {
+        Alert.alert("Error", data.message);
+        return false;
+      }
 
       setUser(data.data.user);
       Alert.alert(
@@ -53,6 +56,7 @@ export default function useWallet() {
     } catch (error) {
       console.error(error.response.data);
       Alert.alert("Error", error.response.data.error);
+      return false;
     } finally {
       setIsLoading(false);
     }
