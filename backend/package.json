@@ -38,6 +38,7 @@
     "multer": "^1.4.5-lts.1",
     "near-api-js": "^4.0.4",
     "near-seed-phrase": "^0.2.1",
+    "openai": "^4.67.0",
     "uuid": "^10.0.0"
   },
   "devDependencies": {

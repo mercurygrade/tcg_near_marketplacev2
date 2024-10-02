@@ -27,6 +27,7 @@ export default function useNFT() {
   };
 
   const mintNFT = async () => {
+    return generateImage();
     setIsLoading(true);
     try {
       const { data } = await request.post(urls.app.nft.mint, {
@@ -46,6 +47,15 @@ export default function useNFT() {
       console.error(error.response.data);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const generateImage = async () => {
+    try {
+      const { data } = await request.get(urls.app.nft.generateImage);
+      console.log("data", data);
+    } catch (error) {
+      console.error(error.response.data);
     }
   };
 

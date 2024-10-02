@@ -10,6 +10,7 @@ export default Object.freeze({
       create: "/wallet?uid={{userId}}&username={{username}}",
     },
     nft: {
+      generateImage: "/generate",
       url: "/nft?id=",
       mint: "/nft/mint",
     },
