@@ -10,13 +10,21 @@ export const createWallet = async (req: Request, res: Response) => {
     if (!username || !uid)
       return res.json({ success: false, message: "No username provided" });
     const { data, error } = await createAccount(username.toString(), "0");
-    if (data?.response?.final_execution_status != "EXECUTED" || error) {
+    console.log("Create Wallet Response", data, "error", error);
+    if (!data || error) {
       return res.status(400).json({
         success: false,
         message: "Error creating account",
         error: error,
       });
     }
+    // if (data?.response?.final_execution_status != "EXECUTED" || error) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Error creating account",
+    //     error: error,
+    //   });
+    // }
     const docRef = await admin.firestore().collection("users").doc(uid);
     const user = await getAuth().getUser(uid.toString());
     const updatedDoc = {
@@ -41,15 +49,11 @@ export const createWallet = async (req: Request, res: Response) => {
     });
     walletAddress = username;
   } catch (error: any) {
-    const errorMessage =
-      error.kind?.kind?.FunctionCallError.ExecutionError ||
-      error.message ||
-      error;
-    console.error("couldd not create account", errorMessage);
+    console.error("couldd not create account", error);
     res.json({
       success: false,
       message: "An Error Occured",
-      error: errorMessage,
+      error: error,
     });
   }
   return walletAddress;

@@ -1,4 +1,5 @@
-import { connect, KeyPair, keyStores, utils } from "near-api-js";
+import { initNear } from "config/nearConfig";
+import { Contract, KeyPair, keyStores, utils } from "near-api-js";
 import { FinalExecutionOutcome } from "near-api-js/lib/providers";
 import { generateSeedPhrase } from "near-seed-phrase";
 const path = require("path");
@@ -25,13 +26,12 @@ if (process.argv.length !== 5) {
 }
 
 // createAccount(process.argv[2], process.argv[3], process.argv[4]);
-
 export async function createAccount(
   newAccountId: string,
   amount: string = "0"
 ) {
-  const near = await connect({ ...config, keyStore });
-  const creatorAccount = await near.account("yusufdimari.testnet");
+  const { account: creatorAccount, CONTRACT_NAME } = await initNear();
+
   const { publicKey, secretKey, seedPhrase } = generateSeedPhrase();
   const keyPair = KeyPair.fromString(secretKey as KeyPairString);
   await keyStore.setKey(config.networkId, newAccountId, keyPair);
@@ -44,16 +44,11 @@ export async function createAccount(
     error: null,
   };
   try {
-    const response = await creatorAccount.functionCall({
-      contractId: "testnet",
-      methodName: "create_account",
-      args: {
-        new_account_id: newAccountId + ".testnet",
-        new_public_key: publicKey,
-      },
-      gas: BigInt("300000000000000"),
-      attachedDeposit: BigInt(utils.format.parseNearAmount(amount) || 0),
-    });
+    const response = await creatorAccount.createAccount(
+      `${newAccountId}.${CONTRACT_NAME}`,
+      publicKey,
+      BigInt(utils.format.parseNearAmount(amount) || 0)
+    );
     if (response) {
       const error = extractErrorMessage(response);
       res = { data: { seedPhrase, response }, error };

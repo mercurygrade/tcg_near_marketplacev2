@@ -36,9 +36,11 @@ export default function useWallet() {
           .replace("{{userId}}", user.uid)
       );
       if (data.error) {
-        Alert.alert("Error", data.message);
+        console.error(data.error.message);
+        // Alert.alert("Error", data.message);
         return false;
       }
+      console.log(data);
 
       setUser(data.data.user);
       Alert.alert(
@@ -52,10 +54,12 @@ export default function useWallet() {
         ]
       );
       console.log(data.data);
-      return data.data.final_execution_status == "EXECUTED";
+      return data.data.final_execution_status.includes("EXECUTED");
     } catch (error) {
-      console.error(error.response.data);
-      Alert.alert("Error", error.response.data.error);
+      console.error(error.response.data.error);
+      const errorMessage =
+        error.response.data.error.message || "An Error Occured";
+      Alert.alert("Error", errorMessage);
       return false;
     } finally {
       setIsLoading(false);

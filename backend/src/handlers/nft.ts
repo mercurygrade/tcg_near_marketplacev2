@@ -1,4 +1,4 @@
-import { CONTRACT_NAME, initNear } from "config/nearConfig";
+import { initNear } from "config/nearConfig";
 import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 
@@ -10,7 +10,7 @@ interface NFT {
 }
 
 export const mintNFT = async (req: Request, res: Response) => {
-  const { account } = await initNear();
+  const { account, CONTRACT_NAME } = await initNear();
   const data: NFT = req.body;
   const depositAmount = "1000000000000000000000000";
   const tokenID = uuidv4();
