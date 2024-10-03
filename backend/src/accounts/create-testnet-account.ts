@@ -25,7 +25,6 @@ if (process.argv.length !== 5) {
   process.exit(1);
 }
 
-// createAccount(process.argv[2], process.argv[3], process.argv[4]);
 export async function createAccount(
   newAccountId: string,
   amount: string = "0"

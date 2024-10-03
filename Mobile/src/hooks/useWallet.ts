@@ -37,10 +37,9 @@ export default function useWallet() {
       );
       if (data.error) {
         console.error(data.error.message);
-        // Alert.alert("Error", data.message);
+        Alert.alert("Error", data.message);
         return false;
       }
-      console.log(data);
 
       setUser(data.data.user);
       Alert.alert(
