@@ -17,6 +17,7 @@ export const mintNFT = async (req: Request, res: Response) => {
   const depositAmount = "1000000000000000000000000";
   const tokenID = uuidv4();
 
+  //generate image using AI
   const imageUrl = await generateImage();
   if (!imageUrl) return;
 
