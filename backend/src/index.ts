@@ -1,7 +1,8 @@
 import cors from "cors";
+require("dotenv").config();
 import express, { Request, Response } from "express";
 
-import { profile, nft, account, wallet } from "./routes/";
+import { profile, nft, account, wallet, image } from "./routes/";
 
 var admin = require("firebase-admin");
 const config = require("../credentials.json");
@@ -29,3 +30,4 @@ app.use(BASE_URL + "/nft", nft);
 app.use(BASE_URL + "/auth", account);
 app.use(BASE_URL + "/profile", profile);
 app.use(BASE_URL + "/wallet", wallet);
+app.use(BASE_URL + "/generate", image);

@@ -1,8 +1,11 @@
-import { connect, KeyPair, keyStores, utils } from "near-api-js";
+import { initNear } from "config/nearConfig";
+import { Contract, KeyPair, keyStores, utils } from "near-api-js";
 import { FinalExecutionOutcome } from "near-api-js/lib/providers";
+import { generateSeedPhrase } from "near-seed-phrase";
 const path = require("path");
 const homedir = require("os").homedir();
 
+export type KeyPairString = `ed25519:${string}` | `secp256k1:${string}`;
 const CREDENTIALS_DIR = ".near-credentials";
 const credentialsPath = path.join(homedir, CREDENTIALS_DIR);
 const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
@@ -22,39 +25,32 @@ if (process.argv.length !== 5) {
   process.exit(1);
 }
 
-// createAccount(process.argv[2], process.argv[3], process.argv[4]);
-
 export async function createAccount(
   newAccountId: string,
   amount: string = "0"
 ) {
-  const near = await connect({ ...config, keyStore });
-  const creatorAccount = await near.account("yusufdimari.testnet");
-  const keyPair = KeyPair.fromRandom("ed25519");
-  const publicKey = keyPair.getPublicKey().toString();
+  const { account: creatorAccount, CONTRACT_NAME } = await initNear();
+
+  const { publicKey, secretKey, seedPhrase } = generateSeedPhrase();
+  const keyPair = KeyPair.fromString(secretKey as KeyPairString);
   await keyStore.setKey(config.networkId, newAccountId, keyPair);
 
   let res: {
-    data: FinalExecutionOutcome | null;
+    data: { response: FinalExecutionOutcome | null; seedPhrase: string } | null;
     error: Error | string | null;
   } = {
     data: null,
     error: null,
   };
   try {
-    const response = await creatorAccount.functionCall({
-      contractId: "testnet",
-      methodName: "create_account",
-      args: {
-        new_account_id: newAccountId + ".testnet",
-        new_public_key: publicKey,
-      },
-      gas: BigInt("300000000000000"),
-      attachedDeposit: BigInt(utils.format.parseNearAmount(amount) || 0),
-    });
+    const response = await creatorAccount.createAccount(
+      `${newAccountId}.${CONTRACT_NAME}`,
+      publicKey,
+      BigInt(utils.format.parseNearAmount(amount) || 0)
+    );
     if (response) {
       const error = extractErrorMessage(response);
-      res = { data: response, error };
+      res = { data: { seedPhrase, response }, error };
     }
   } catch (error: any) {
     res.error = error;

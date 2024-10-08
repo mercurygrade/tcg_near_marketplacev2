@@ -1,4 +1,6 @@
 export const getImagefromUrl = async (imageUrl: any) => {
+  console.log("Converting Image URL to array buffer");
+
   let contentType = null;
   let imageData = null;
   try {
@@ -14,12 +16,12 @@ export const getImagefromUrl = async (imageUrl: any) => {
   return { contentType, imageData };
 };
 
-export const uploadImage = async (
-  url: any = "https://images.unsplash.com/photo-1511497584788-876760111969"
-) => {
-  const API_KEY = "3TIAfdr4AeadLwmQikY3s5zHY5NZAoVE3yfsfOaD";
+export const uploadImage = async (url: string) => {
+  console.log("Uploading Image to decentralized storage");
   let data = null;
   let error = null;
+  const API_KEY = process.env.ARWEAVE_API_KEY || "";
+  // if (!API_KEY) return (error = "Could not store Image,No API_KEY is invalid");
 
   //   const vaultId = "PlblrelOIxwuLUYAzSYjDZEGnTfLGUk4uQsORWlH4bg";
   //   const filePath = "uploads/a.jpeg";
@@ -40,7 +42,7 @@ export const uploadImage = async (
     });
 
     const result = await response.json();
-    console.log("File uploaded successfully:", result);
+    console.log("Image uploaded successfully:", result);
     data = result;
   } catch (e) {
     console.error("Error uploading to Arweave:", error);

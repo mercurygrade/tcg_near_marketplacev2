@@ -1,4 +1,4 @@
-import { CONTRACT_NAME, initNear } from "config/nearConfig";
+import { initNear } from "config/nearConfig";
 import { Router, Request, Response } from "express";
 import { mintNFT } from "handlers/nft";
 import { Contract as NearContract } from "near-api-js";
@@ -19,7 +19,7 @@ interface NFT {
 
 router.post("/", async (req: Request, res: Response) => {
   console.log("request received at ", req.url);
-  const { account } = await initNear();
+  const { account, CONTRACT_NAME } = await initNear();
   const { data }: { data: NFT } = req.body;
   const contract = new NearContract(account, CONTRACT_NAME, {
     viewMethods: ["getDID"],
@@ -54,7 +54,7 @@ router.get("/", async (req: Request, res: Response) => {
   console.log("request received", req.url);
   const { id } = req.query;
   const account_id = id?.toString() + ".testnet";
-  const { account } = await initNear();
+  const { account, CONTRACT_NAME } = await initNear();
   const contract = new NearContract(account, CONTRACT_NAME, {
     viewMethods: ["nft_tokens_for_owner"],
     changeMethods: ["nft_mint"],
