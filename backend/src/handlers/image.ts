@@ -6,7 +6,7 @@ export const generateImage = async (req: Request, res: Response) => {
   try {
     console.log("Tring to genarate a new Image");
     const response = await client.images.generate({
-      prompt: "A picture of a forest in Nigeria",
+      prompt: "A picture of a green and rich forest",
       model: "dall-e-2",
       style: "natural",
       quality: "standard",

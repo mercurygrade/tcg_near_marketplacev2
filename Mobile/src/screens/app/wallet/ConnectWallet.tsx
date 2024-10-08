@@ -16,7 +16,6 @@ export default function ConnectWallet({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* temporary solution for back button */}
       <Text style={styles.closeButton} onPress={goBack}>
         Cancel
       </Text>

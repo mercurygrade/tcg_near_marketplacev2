@@ -10,6 +10,8 @@ export const createWallet = async (req: Request, res: Response) => {
     //ensure both username and profileId are provided
     if (!username || !uid)
       return res.json({ success: false, message: "No username provided" });
+
+    //create a new wallet
     const { data, error } = await createAccount(username.toString(), "0");
     console.log("Create Wallet Response", data, "error", error);
 

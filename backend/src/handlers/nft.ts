@@ -2,6 +2,7 @@ import { initNear } from "config/nearConfig";
 import { client } from "config/openAiConfig";
 import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
+
 import { uploadImage } from "./files";
 
 interface NFT {
@@ -21,7 +22,7 @@ export const mintNFT = async (req: Request, res: Response) => {
   const imageUrl = await generateImage();
   if (!imageUrl) return;
 
-  //upload image to Akord decentralized Storage
+  //upload image to Akord decentralized Storage and get the url of stored image
   const image = await uploadImage(imageUrl);
   if (!image) return;
   const storedImageUrl = image.data.tx.gatewayUrls[0];
@@ -32,12 +33,8 @@ export const mintNFT = async (req: Request, res: Response) => {
     receiver_id: data.receiver_id + ".testnet",
     metadata: {
       ...data.metadata,
-      // media: "https://akrd.net/GiB3bVUdr-80GQUTJdsiPNNF8L7mq6DmhRmE5IIpywA",
       media: storedImageUrl,
     },
-    // perpetual_royalties: {
-    //   "yusufdimari1.testnet": 500, // 5% royalties
-    // },
   };
 
   // Call the contract method and handle the response
@@ -56,6 +53,7 @@ export const mintNFT = async (req: Request, res: Response) => {
     console.log("NFT minted successfully \n", result);
   } catch (contractError: any) {
     console.error("Error adding a new NFT:", contractError);
+
     return res.status(500).json({
       success: false,
       message: "Error adding a new NFT",
