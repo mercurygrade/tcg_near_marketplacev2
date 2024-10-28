@@ -30,18 +30,13 @@ function NearBindgen(target) {
 
 const U64_MAX = 2n ** 64n - 1n;
 const EVICTED_REGISTER = U64_MAX - 1n;
-function log(...params) {
-  env.log(`${params.map(x => x === undefined ? 'undefined' : x) // Stringify undefined
-  .map(x => typeof x === 'object' ? JSON.stringify(x) : x) // Convert Objects to strings
-  .join(' ')}` // Convert to string
-  );
+function signerAccountId() {
+  env.signer_account_id(0);
+  return env.read_register(0);
 }
 function predecessorAccountId() {
   env.predecessor_account_id(0);
   return env.read_register(0);
-}
-function attachedDeposit() {
-  return env.attached_deposit();
 }
 function storageRead(key) {
   let ret = env.storage_read(key, 0);
@@ -66,15 +61,6 @@ function input() {
   env.input(0);
   return env.read_register(0);
 }
-function storageUsage() {
-  return env.storage_usage();
-}
-function promiseBatchCreate(accountId) {
-  return env.promise_batch_create(accountId);
-}
-function promiseBatchActionTransfer(promiseIndex, amount) {
-  env.promise_batch_action_transfer(promiseIndex, amount);
-}
 var PromiseResult;
 (function (PromiseResult) {
   PromiseResult[PromiseResult["NotReady"] = 0] = "NotReady";
@@ -94,9 +80,6 @@ function storageRemove(key) {
     return true;
   }
   return false;
-}
-function storageByteCost() {
-  return 10000000000000000000n;
 }
 
 class NearContract {
@@ -593,278 +576,201 @@ class UnorderedSet {
   }
 }
 
-//defines the payout type we'll be returning as a part of the royalty standards.
-class Token {
+class Listing {
   constructor({
-    ownerId,
-    approvedAccountIds,
-    nextApprovalId,
-    royalty
+    token_id,
+    owner_id,
+    approval_id,
+    company_id,
+    sale_price
   }) {
-    //owner of the token
-    this.owner_id = ownerId,
-    //list of approved account IDs that have access to transfer the token. This maps an account ID to an approval ID
-    this.approved_account_ids = approvedAccountIds,
-    //the next approval ID to give out.
-    this.next_approval_id = nextApprovalId,
-    //keep track of the royalty percentages for the token in a hash map
-    this.royalty = royalty;
+    this.token_id = token_id;
+    this.owner_id = owner_id;
+    this.approval_id = approval_id;
+    this.company_id = company_id;
+    this.sale_price = sale_price;
   }
 }
-
-//The Json token is what will be returned from view calls.
-class JsonToken {
-  constructor({
-    tokenId,
-    ownerId,
-    metadata,
-    approvedAccountIds,
-    royalty
-  }) {
-    //token ID
-    this.token_id = tokenId,
-    //owner of the token
-    this.owner_id = ownerId,
-    //token metadata
-    this.metadata = metadata,
-    //list of approved account IDs that have access to transfer the token. This maps an account ID to an approval ID
-    this.approved_account_ids = approvedAccountIds,
-    //keep track of the royalty percentages for the token in a hash map
-    this.royalty = royalty;
+const get_listings = ({
+  contract
+}) => {
+  const listings = [];
+  let keys = contract.listings.keys;
+  for (let key of keys.toArray()) {
+    const listing = contract.listings.get(key);
+    if (listing) {
+      listings.push(listing);
+    }
   }
-}
+  return listings;
+};
+const get_listings_by_company = ({
+  contract,
+  company_id
+}) => {
+  const listings = Array.from(restoreOwners(contract.byCompanyId.get(company_id)) || []);
+  return listings;
+};
+const get_listings_by_owner = ({
+  contract,
+  owner_id
+}) => {
+  const listings = Array.from(restoreOwners(contract.byOwnerId.get(owner_id)) || []);
+  return listings;
+};
 
-// export function restoreOwners(collection) {
-//   if (collection == null) {
-//     return null;
-//   }
-//   // Create a new UnorderedSet with the same storage prefix
+const list_nft = ({
+  contract,
+  token_id,
+  owner_id,
+  approval_id,
+  company_id,
+  sale_price
+}) => {
+  const signerId = signerAccountId();
+  const contractId = predecessorAccountId();
 
-//       static deserialize(data) {
-//         let set = new UnorderedSet(data.prefix);
-//         // reconstruct UnorderedSet
-//         set.length = data.length;
-//         // reconstruct Vector
-//         let elementsPrefix = data.prefix + "e";
-//         set.elements = new Vector(elementsPrefix);
-//         set.elements.length = data.elements.length;
-//         return set;
-//     }
-//   // return new UnorderedSet<string>(collection);
-// }
+  //make sure the signer isnt the predecessor
+  // assert(
+  //   signerId != contractId,
+  //   "this function can only be called via a cross-contract call"
+  // );
+  assert(owner_id == signerId, "Only the owner can approve this transaction");
+  let contractAndtokenId = `${contractId}.${token_id}`;
+  let listing = new Listing({
+    approval_id,
+    company_id,
+    owner_id,
+    sale_price,
+    token_id
+  });
+  let alreadyExist = contract.listings.get(contractAndtokenId);
+  assert(!alreadyExist, "Token already listed in Marketplace");
+  //add the token to the marketplace listing
+  contract.listings.set(contractAndtokenId, listing);
+
+  //add the token to the company listing
+  let byCompanyId = restoreOwners(contract.byCompanyId.get(company_id));
+  if (!byCompanyId) {
+    byCompanyId = new UnorderedSet("byCompanyId" + company_id.toString());
+  }
+  byCompanyId.set(token_id);
+  contract.byCompanyId.set(company_id, byCompanyId);
+
+  //add the token to the owner listing
+  let byOwnerId = restoreOwners(contract.byOwnerId.get(owner_id));
+  if (!byOwnerId) {
+    byOwnerId = new UnorderedSet("byOwnerId" + owner_id.toString());
+  }
+  byOwnerId.set(contractAndtokenId);
+  contract.byOwnerId.set(owner_id, byOwnerId);
+  return {
+    success: true
+  };
+};
 function restoreOwners(collection) {
   if (!collection || typeof collection !== "object" || !collection.prefix) {
     return null;
   }
   return UnorderedSet.deserialize(collection);
 }
-function internalAddTokenToOwner(contract, accountId, tokenId) {
-  // Ensure consistency in how you create new UnorderedSets
-  let tokenSet = restoreOwners(contract.tokensPerOwner.get(accountId));
-  // if (tokenSet) {
-  //   const updatedTokens = tokenSet.concat(tokenId);
-  //   contract.tokensPerOwner.set(accountId, updatedTokens);
-  // }
-
-  if (!tokenSet) {
-    log(`Creating new UnorderedSet for account: ${accountId}`);
-    tokenSet = new UnorderedSet("tokensPerOwner" + accountId.toString());
-  }
-
-  // Insert the token ID into the set
-  tokenSet.set(tokenId);
-
-  // Save the set back to the contract storage
-  contract.tokensPerOwner.set(accountId, tokenSet);
-}
-function refundDeposit(storageUsed) {
-  //get how much it would cost to store the information
-  let requiredCost = storageUsed * storageByteCost().valueOf();
-  //get the attached deposit
-  let attachedDeposit$1 = attachedDeposit().valueOf();
-
-  //make sure that the attached deposit is greater than or equal to the required cost
-  assert(requiredCost <= attachedDeposit$1, `Must attach ${requiredCost} yoctoNEAR to cover storage`);
-
-  //get the refund amount from the attached deposit - required cost
-  let refund = attachedDeposit$1 - requiredCost;
-  log(`Refunding ${refund} yoctoNEAR`);
-
-  //if the refund is greater than 1 yocto NEAR, we refund the predecessor that amount
-  if (refund > 1) {
-    // Send the money to the beneficiary (TODO: don't use batch actions)
-    const promise = promiseBatchCreate(predecessorAccountId());
-    promiseBatchActionTransfer(promise, refund);
-  }
-}
-
-const NFT_METADATA_SPEC = "nft-1.0.0";
-
-/// This is the name of the NFT standard we're using
-const NFT_STANDARD_NAME = "nep171";
-function mintNFT({
-  contract,
-  receiverId,
-  tokenId,
-  metadata,
-  perpetual_royalties
-}) {
-  let initialStorageUsage = storageUsage();
-  let royalty = {};
-  if (perpetual_royalties != null) {
-    assert(Object.keys(perpetual_royalties).length < 7, "Cannot add more than 6 perpetual royalty amounts");
-    Object.entries(perpetual_royalties).forEach(([account, amount], index) => {
-      royalty[account] = amount;
-    });
-  }
-  let token = new Token({
-    ownerId: receiverId,
-    royalty,
-    nextApprovalId: 0,
-    approvedAccountIds: {}
-  });
-  assert(!contract.tokensById.containsKey(tokenId), "Token already exist");
-  contract.tokensById.set(tokenId, token);
-  contract.tokenMetadataById.set(tokenId, metadata);
-  internalAddTokenToOwner(contract, receiverId, tokenId);
-  let nftMintLog = {
-    // Standard name ("nep171").
-    standard: NFT_STANDARD_NAME,
-    // Version of the standard ("nft-1.0.0").
-    version: NFT_METADATA_SPEC,
-    // The data related with the event stored in a vector.
-    event: "nft_mint",
-    data: [{
-      // Owner of the token.
-      owner_id: token.owner_id,
-      // Vector of token IDs that were minted.
-      token_ids: [tokenId]
-    }]
-  };
-  log(`EVENT_JSON:${JSON.stringify(nftMintLog)}`);
-
-  //calculate the required storage which was the used - initial TODO
-  let requiredStorageInBytes = storageUsage().valueOf() - initialStorageUsage.valueOf();
-
-  //refund any excess storage if the user attached too much. Panic if they didn't attach enough to cover the required.
-  refundDeposit(requiredStorageInBytes);
-}
-function getToken({
-  contract,
-  tokenId
-}) {
-  let token = contract.tokensById.get(tokenId);
-  if (token == null) return null;
-  let metadata = contract.tokenMetadataById.get(tokenId);
-  let jsToken = new JsonToken({
-    metadata: metadata,
-    ownerId: token.owner_id,
-    approvedAccountIds: token.approved_account_ids,
-    royalty: token.royalty,
-    tokenId: tokenId
-  });
-  return jsToken;
-}
-function getOwnerTokens({
-  contract,
-  accountId,
-  fromIndex,
-  limit
-}) {
-  let tokenSet = restoreOwners(contract.tokensPerOwner.get(accountId));
-  if (tokenSet == null) {
-    return [];
-  }
-  let start = fromIndex ? parseInt(fromIndex) : 0;
-  let max = limit ? parseInt(limit) : 50;
-  let keys = tokenSet.toArray();
-  let tokens = [];
-  for (let i = start; i < max; i++) {
-    if (i >= keys.length) {
-      break;
-    }
-    let token = getToken({
-      contract,
-      tokenId: keys[i]
-    });
-    tokens.push(token);
-  }
-  return tokens;
-}
 
 var _class, _class2;
+
+//@ts-ignore
 let Contract = NearBindgen(_class = (_class2 = class Contract extends NearContract {
   constructor({
-    owner_id,
-    metadata = {
-      spec: "nft-1.0.0",
-      name: "NFT Tutorial Contract",
-      symbol: "GOTEAM"
-    }
+    owner_id
   }) {
     super();
-    this.metadata = metadata;
-    this.owner_id = owner_id;
-    this.tokensPerOwner = new LookupMap("tokensPerOwner");
-    this.tokensById = new LookupMap("tokensById");
-    this.tokenMetadataById = new UnorderedMap("tokensMetadataById");
+    this.ownerId = owner_id;
+    this.listings = new UnorderedMap("listings");
+    this.byOwnerId = new LookupMap("byOwnerId");
+    this.byCompanyId = new LookupMap("byCompanyId");
+    this.storageDeposits = new LookupMap("storageDeposits");
   }
   default() {
     return new Contract({
       owner_id: ""
     });
   }
-  nft_mint({
+
+  //@ts-ignore
+  //list the nft for sale in marketPlace
+  nft_list({
     token_id,
-    metadata,
-    receiver_id,
-    perpetual_royalties
+    owner_id,
+    approval_id,
+    company_id,
+    sale_price
   }) {
-    return mintNFT({
+    return list_nft({
       contract: this,
-      receiverId: receiver_id,
-      tokenId: token_id,
-      metadata,
-      perpetual_royalties
+      token_id,
+      owner_id,
+      approval_id,
+      company_id,
+      sale_price
     });
   }
-  nft_tokens_for_owner({
-    account_id,
-    from_index,
-    limit
-  }) {
-    try {
-      log(`Viewing Tokens`);
-      return getOwnerTokens({
-        contract: this,
-        accountId: account_id,
-        fromIndex: from_index,
-        limit
-      });
-    } catch (error) {
-      log(`Error occurred: ${error.message}`);
-      return [];
-    }
+
+  //@ts-ignore
+  get_all_listings() {
+    return get_listings({
+      contract: this
+    });
   }
-}, _applyDecoratedDescriptor(_class2.prototype, "nft_mint", [call], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_mint"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_tokens_for_owner", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_tokens_for_owner"), _class2.prototype), _class2)) || _class;
+  //@ts-ignore
+  get_company_listings({
+    company_id
+  }) {
+    return get_listings_by_company({
+      contract: this,
+      company_id
+    });
+  }
+  //@ts-ignore
+  get_owner_listings({
+    owner_id
+  }) {
+    return get_listings_by_owner({
+      contract: this,
+      owner_id
+    });
+  }
+}, _applyDecoratedDescriptor(_class2.prototype, "nft_list", [call], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_list"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_all_listings", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "get_all_listings"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_company_listings", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "get_company_listings"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_owner_listings", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "get_owner_listings"), _class2.prototype), _class2)) || _class;
 function init() {
   Contract._init();
 }
-function nft_tokens_for_owner() {
+function get_owner_listings() {
   let _contract = Contract._get();
   _contract.deserialize();
   let args = _contract.constructor.deserializeArgs();
-  let ret = _contract.nft_tokens_for_owner(args);
+  let ret = _contract.get_owner_listings(args);
   if (ret !== undefined) env.value_return(_contract.constructor.serializeReturn(ret));
 }
-function nft_mint() {
+function get_company_listings() {
   let _contract = Contract._get();
   _contract.deserialize();
   let args = _contract.constructor.deserializeArgs();
-  let ret = _contract.nft_mint(args);
+  let ret = _contract.get_company_listings(args);
+  if (ret !== undefined) env.value_return(_contract.constructor.serializeReturn(ret));
+}
+function get_all_listings() {
+  let _contract = Contract._get();
+  _contract.deserialize();
+  let args = _contract.constructor.deserializeArgs();
+  let ret = _contract.get_all_listings(args);
+  if (ret !== undefined) env.value_return(_contract.constructor.serializeReturn(ret));
+}
+function nft_list() {
+  let _contract = Contract._get();
+  _contract.deserialize();
+  let args = _contract.constructor.deserializeArgs();
+  let ret = _contract.nft_list(args);
   _contract.serialize();
   if (ret !== undefined) env.value_return(_contract.constructor.serializeReturn(ret));
 }
 
-export { Contract, init, nft_mint, nft_tokens_for_owner };
-//# sourceMappingURL=trustid-near-mine.js.map
+export { Contract, get_all_listings, get_company_listings, get_owner_listings, init, nft_list };
+//# sourceMappingURL=tcg-near-marketplace.js.map

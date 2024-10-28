@@ -53,8 +53,8 @@ router.post("/mint", mintNFT);
 router.get("/", async (req: Request, res: Response) => {
   console.log("request received", req.url);
   const { id } = req.query;
-  const account_id = id?.toString() + ".testnet";
   const { account, CONTRACT_NAME } = await initNear();
+  const account_id = id?.toString() + "." + CONTRACT_NAME;
   const contract = new NearContract(account, CONTRACT_NAME, {
     viewMethods: ["nft_tokens_for_owner"],
     changeMethods: ["nft_mint"],
@@ -66,7 +66,9 @@ router.get("/", async (req: Request, res: Response) => {
       account_id: account_id,
     });
     console.log("success", result);
-    return res.status(200).json({ success: true, data: result });
+    return res
+      .status(200)
+      .json({ success: true, data: result, account: account_id });
   } catch (contractError) {
     console.error("Error getting NFT:", contractError);
     return res.status(500).json({

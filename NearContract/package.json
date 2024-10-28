@@ -1,0 +1,34 @@
+{
+  "name": "trustid-near",
+  "version": "1.0.0",
+  "license": "(MIT AND Apache-2.0)",
+  "type": "module",
+  "scripts": {
+    "build": "near-sdk-js build src/contract.ts build/trustid-near.wasm",
+    "build:new": "near-sdk-js build src/NewContract.ts build/trustid-near-new.wasm",
+    "build:nft": "near-sdk-js build src/nft/nftcontract.ts build/tcg-near-nft.wasm",
+    "deploy:nft": "near deploy nft.yusufdimari.testnet build/tcg-near-nft.wasm",
+    "buildAndDeploy:nft": "npm run build:nft && npm run deploy:nft",
+    "build:marketplace": "near-sdk-js build src/marketplace/contract.ts build/tcg-near-marketplace.wasm",
+    "deploy:marketplace": "near deploy marketplace.yusufdimari.testnet build/tcg-near-marketplace.wasm",
+    "create:marketplace": "near create-account marketplace.yusufdimari.testnet --masterAccount yusufdimari.testnet --initialBalance 10",
+    "delete:marketplace": "near delete-account marketplace.yusufdimari.testnet yusufdimari.testnet",
+    "init:marketplace": "near call marketplace.yusufdimari.testnet init --useAccount yusufdimari.testnet",
+    "buildAndDeploy:marketplace": "npm run build:marketplace && npm run deploy:marketplace",
+    "test": "$npm_execpath run build && ava -- ./build/trustid-near.wasm",
+    "test:2": "$npm_execpath run build:2 && ava -- ./build/trustid-near-mine.wasm"
+  },
+  "dependencies": {
+    "near-sdk-js": "^0.4.0-5"
+  },
+  "devDependencies": {
+    "ava": "^6.1.3",
+    "near-workspaces": "^3.5.0",
+    "typescript": "^5.6.2"
+  },
+  "ava": {
+    "files": [
+      "sandbox-test/*.ava.js"
+    ]
+  }
+}

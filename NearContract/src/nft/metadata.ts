@@ -1,4 +1,4 @@
-import { Contract } from "./MyContract";
+import { Contract } from "./nftcontract";
 
 //defines the payout type we'll be returning as a part of the royalty standards.
 export class Payout {

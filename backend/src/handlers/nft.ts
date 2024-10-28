@@ -30,7 +30,7 @@ export const mintNFT = async (req: Request, res: Response) => {
   //data to send to mint NFT
   const dataTosend = {
     token_id: tokenID + "-tcg-team-token",
-    receiver_id: data.receiver_id + ".testnet",
+    receiver_id: data.receiver_id + "." + CONTRACT_NAME,
     metadata: {
       ...data.metadata,
       media: storedImageUrl,

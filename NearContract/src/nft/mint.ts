@@ -1,5 +1,5 @@
 import { storageUsage } from "near-sdk-js/lib/api";
-import { Contract } from "./MyContract";
+import { Contract } from "./nftcontract";
 import { JsonToken, Token, TokenMetadata } from "./metadata";
 import { UnorderedSet, assert, near } from "near-sdk-js";
 import {
@@ -125,5 +125,57 @@ export function getOwnerTokens({
     let token = getToken({ contract, tokenId: keys[i] }) as JsonToken;
     tokens.push(token);
   }
+  return tokens;
+}
+
+export function getTokens({
+  contract,
+  fromIndex,
+  limit,
+}: {
+  contract: Contract;
+  fromIndex?: string;
+  limit?: number;
+}): JsonToken[] {
+  let tokens: any = [];
+  let start = fromIndex ? parseInt(fromIndex) : 0;
+  //take the first "limit" elements in the array. If we didn't specify a limit, use 50
+  let max = limit ? limit : 50;
+  let keys = contract.tokenMetadataById.toArray();
+  for (let i = start; i < keys.length && i < start + max; i++) {
+    let jsonToken = getToken({ contract, tokenId: keys[i][0] });
+    tokens.push(jsonToken);
+  }
+  return tokens;
+}
+
+export function getTokenBatch({
+  contract,
+  token_ids,
+  fromIndex,
+  limit,
+}: {
+  contract: Contract;
+  token_ids: string[];
+  fromIndex?: string;
+  limit?: number;
+}): JsonToken[] {
+  let tokens: JsonToken[] = [];
+  let start = fromIndex ? parseInt(fromIndex) : 0;
+  let max = limit ? limit : 50;
+  if (start < 0 || start >= token_ids.length) {
+    return []; // Return empty array if start is out of bounds
+  }
+  // Limit the tokenIds to the maximum allowed
+  const end = Math.min(start + max, token_ids.length);
+  const tokensToFetch = token_ids.slice(start, end);
+  for (let tokenId of tokensToFetch) {
+    const token = getToken({ contract, tokenId });
+
+    if (token) {
+      tokens.push(token);
+    }
+  }
+
   return tokens;
 }

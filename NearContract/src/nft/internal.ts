@@ -1,5 +1,5 @@
 import { UnorderedSet, Vector, assert, near } from "near-sdk-js";
-import { Contract } from "./MyContract";
+import { Contract } from "./nftcontract";
 import { Token } from "./metadata";
 
 // export function restoreOwners(collection) {
