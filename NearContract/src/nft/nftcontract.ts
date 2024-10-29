@@ -9,6 +9,7 @@ import {
 } from "near-sdk-js";
 import { NFTContractMetadata, Token, TokenMetadata } from "./metadata";
 import { mintNFT, getOwnerTokens, getTokens, getTokenBatch } from "./mint";
+import { internalNftTransferPayout } from "./internal";
 
 //@ts-ignore
 @NearBindgen
@@ -90,5 +91,28 @@ export class Contract extends NearContract {
       near.log(`Contract Error occurred: ${error.message}`);
       return [];
     }
+  }
+
+  //for Transfer of Tokens
+  //@ts-ignore
+  @call
+  //transfers the token to the receiver ID and returns the payout object that should be payed given the passed in balance.
+  nft_transfer_payout({
+    receiver_id,
+    token_id,
+    approval_id,
+    memo,
+    balance,
+    max_len_payout,
+  }) {
+    return internalNftTransferPayout({
+      contract: this,
+      receiverId: receiver_id,
+      tokenId: token_id,
+      approvalId: approval_id,
+      memo: memo,
+      balance: balance,
+      maxLenPayout: max_len_payout,
+    });
   }
 }

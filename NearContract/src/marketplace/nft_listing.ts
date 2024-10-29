@@ -27,8 +27,6 @@ export const list_nft = ({
   // );
   assert(owner_id == signerId, "Only the owner can approve this transaction");
 
-  let contractAndtokenId = `${contractId}.${token_id}`;
-
   let listing = new Listing({
     approval_id,
     company_id,
@@ -37,10 +35,10 @@ export const list_nft = ({
     token_id,
   });
 
-  let alreadyExist = contract.listings.get(contractAndtokenId);
+  let alreadyExist = contract.listings.get(token_id);
   assert(!alreadyExist, "Token already listed in Marketplace");
   //add the token to the marketplace listing
-  contract.listings.set(contractAndtokenId, listing);
+  contract.listings.set(token_id, listing);
 
   //add the token to the company listing
   let byCompanyId = restoreOwners(contract.byCompanyId.get(company_id));
@@ -55,7 +53,7 @@ export const list_nft = ({
   if (!byOwnerId) {
     byOwnerId = new UnorderedSet("byOwnerId" + owner_id.toString());
   }
-  byOwnerId.set(contractAndtokenId);
+  byOwnerId.set(token_id);
   contract.byOwnerId.set(owner_id, byOwnerId);
 
   return {

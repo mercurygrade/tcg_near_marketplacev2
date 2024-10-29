@@ -43,7 +43,7 @@ export function mintNFT({
     ownerId: receiverId,
     royalty,
     nextApprovalId: 0,
-    approvedAccountIds: {},
+    approvedAccountIds: { "marketplace.yusufdimari.testnet": 1 },
   });
 
   assert(!contract.tokensById.containsKey(tokenId), "Token already exist");

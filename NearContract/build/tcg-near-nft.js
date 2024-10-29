@@ -43,6 +43,13 @@ function predecessorAccountId() {
 function attachedDeposit() {
   return env.attached_deposit();
 }
+function panic(msg) {
+  if (msg !== undefined) {
+    env.panic(msg);
+  } else {
+    env.panic();
+  }
+}
 function storageRead(key) {
   let ret = env.storage_read(key, 0);
   if (ret === 1n) {
@@ -634,24 +641,6 @@ class JsonToken {
   }
 }
 
-// export function restoreOwners(collection) {
-//   if (collection == null) {
-//     return null;
-//   }
-//   // Create a new UnorderedSet with the same storage prefix
-
-//       static deserialize(data) {
-//         let set = new UnorderedSet(data.prefix);
-//         // reconstruct UnorderedSet
-//         set.length = data.length;
-//         // reconstruct Vector
-//         let elementsPrefix = data.prefix + "e";
-//         set.elements = new Vector(elementsPrefix);
-//         set.elements.length = data.elements.length;
-//         return set;
-//     }
-//   // return new UnorderedSet<string>(collection);
-// }
 function restoreOwners(collection) {
   if (!collection || typeof collection !== "object" || !collection.prefix) {
     return null;
@@ -667,7 +656,6 @@ function internalAddTokenToOwner(contract, accountId, tokenId) {
   // }
 
   if (!tokenSet) {
-    log(`Creating new UnorderedSet for account: ${accountId}`);
     tokenSet = new UnorderedSet("tokensPerOwner" + accountId.toString());
   }
 
@@ -676,6 +664,202 @@ function internalAddTokenToOwner(contract, accountId, tokenId) {
 
   // Save the set back to the contract storage
   contract.tokensPerOwner.set(accountId, tokenSet);
+}
+
+//remove a token from an owner (internal method and can't be called directly via CLI).
+function internalRemoveTokenFromOwner(contract, accountId, tokenId) {
+  //we get the set of tokens that the owner has
+  let tokenSet = restoreOwners(contract.tokensPerOwner.get(accountId));
+  //if there is no set of tokens for the owner, we panic with the following message:
+  if (tokenSet == null) {
+    panic("Token should be owned by the sender");
+  }
+
+  //we remove the the token_id from the set of tokens
+  tokenSet.remove(tokenId);
+
+  //if the token set is now empty, we remove the owner from the tokens_per_owner collection
+  if (tokenSet.isEmpty()) {
+    contract.tokensPerOwner.remove(accountId);
+  } else {
+    //if the token set is not empty, we simply insert it back for the account ID.
+    contract.tokensPerOwner.set(accountId, tokenSet);
+  }
+}
+
+//transfers the NFT to the receiver_id (internal method and can't be called directly via CLI).
+function internalTransfer(contract, senderId, receiverId, tokenId, approvalId, memo) {
+  //get the token object by passing in the token_id
+  let token = contract.tokensById.get(tokenId);
+  if (token == null) {
+    panic("no token found");
+  }
+
+  //if the sender doesn't equal the owner, we check if the sender is in the approval list
+  if (senderId != token.owner_id) {
+    //if the token's approved account IDs doesn't contain the sender, we panic
+    if (!token.approved_account_ids.hasOwnProperty(senderId)) {
+      panic(`Unauthorized for ${senderId}`);
+    }
+
+    // If they included an approval_id, check if the sender's actual approval_id is the same as the one included
+    if (approvalId != null) {
+      //get the actual approval ID
+      let actualApprovalId = token.approved_account_ids[senderId];
+      //if the sender isn't in the map, we panic
+      if (actualApprovalId == null) {
+        panic("Sender is not approved account");
+      }
+
+      //make sure that the actual approval ID is the same as the one provided
+      assert(actualApprovalId == approvalId, `The actual approval_id ${actualApprovalId} is different from the given approval_id ${approvalId}`);
+    }
+  }
+
+  //we make sure that the sender isn't sending the token to themselves
+  assert(token.owner_id != receiverId, "The token owner and the receiver should be different");
+
+  //we remove the token from it's current owner's set
+  internalRemoveTokenFromOwner(contract, token.owner_id, tokenId);
+  //we then add the token to the receiver_id's set
+  internalAddTokenToOwner(contract, receiverId, tokenId);
+
+  //we create a new token struct
+  let newToken = new Token({
+    ownerId: receiverId,
+    //reset the approval account IDs
+    approvedAccountIds: {
+      "marketplace.yusufdimari.testnet": 1
+    },
+    nextApprovalId: token.next_approval_id,
+    //we copy over the royalties from the previous token
+    royalty: token.royalty
+  });
+
+  //insert that new token into the tokens_by_id, replacing the old entry
+  contract.tokensById.set(tokenId, newToken);
+
+  //if there was some memo attached, we log it.
+  if (memo != null) {
+    log(`Memo: ${memo}`);
+  }
+
+  // Default the authorized ID to be None for the logs.
+  let authorizedId;
+
+  //if the approval ID was provided, set the authorized ID equal to the sender
+  if (approvalId != null) {
+    authorizedId = senderId;
+  }
+
+  // Construct the transfer log as per the events standard.
+  let nftTransferLog = {
+    // Standard name ("nep171").
+    standard: NFT_STANDARD_NAME,
+    // Version of the standard ("nft-1.0.0").
+    version: NFT_METADATA_SPEC,
+    // The data related with the event stored in a vector.
+    event: "nft_transfer",
+    data: [{
+      // The optional authorized account ID to transfer the token on behalf of the old owner.
+      authorized_id: authorizedId,
+      // The old owner's account ID.
+      old_owner_id: token.owner_id,
+      // The account ID of the new owner of the token.
+      new_owner_id: receiverId,
+      // A vector containing the token IDs as strings.
+      token_ids: [tokenId],
+      // An optional memo to include.
+      memo
+    }]
+  };
+
+  // Log the serialized json.
+  log(JSON.stringify(nftTransferLog));
+
+  //return the previous token object that was transferred.
+  return token;
+}
+
+//transfers the token to the receiver ID and returns the payout object that should be payed given the passed in balance.
+function internalNftTransferPayout({
+  contract,
+  receiverId,
+  tokenId,
+  approvalId,
+  memo,
+  balance,
+  maxLenPayout
+}) {
+  //assert that the user attached 1 yocto NEAR for security reasons
+  assertOneYocto();
+  //get the sender ID
+  let senderId = predecessorAccountId();
+  //transfer the token to the passed in receiver and get the previous token object back
+  let previousToken = internalTransfer(contract, senderId, receiverId, tokenId, approvalId, memo);
+
+  //refund the previous token owner for the storage used up by the previous approved account IDs
+  refundApprovedAccountIds(previousToken.owner_id, previousToken.approved_account_ids);
+
+  //get the owner of the token
+  let ownerId = previousToken.owner_id;
+  //keep track of the total perpetual royalties
+  let totalPerpetual = 0;
+  //keep track of the payout object to send back
+  let payoutObj = {};
+  //get the royalty object from token
+  let royalty = previousToken.royalty;
+
+  //make sure we're not paying out to too many people (GAS limits this)
+  assert(Object.keys(royalty).length <= maxLenPayout, "Market cannot payout to that many receivers");
+
+  //go through each key and value in the royalty object
+  Object.entries(royalty).forEach(([key, value], index) => {
+    //only insert into the payout if the key isn't the token owner (we add their payout at the end)
+    if (key != ownerId) {
+      payoutObj[key] = royaltyToPayout(value, balance);
+      totalPerpetual += value;
+    }
+  });
+
+  // payout to previous owner who gets 100% - total perpetual royalties
+  payoutObj[ownerId] = royaltyToPayout(10000 - totalPerpetual, balance);
+
+  //return the payout object
+  return {
+    payout: payoutObj
+  };
+}
+function assertOneYocto() {
+  assert(attachedDeposit().toString() === "1", "Requires attached deposit of exactly 1 yoctoNEAR");
+}
+
+//convert the royalty percentage and amount to pay into a payout (U128)
+function royaltyToPayout(royaltyPercentage, amountToPay) {
+  return (BigInt(royaltyPercentage) * BigInt(amountToPay) / BigInt(10000)).toString();
+}
+
+//refund the storage taken up by passed in approved account IDs and send the funds to the passed in account ID.
+function refundApprovedAccountIdsIter(accountId, approvedAccountIds) {
+  //get the storage total by going through and summing all the bytes for each approved account IDs
+  let storageReleased = approvedAccountIds.map(e => bytesForApprovedAccountId(e)).reduce((partialSum, a) => partialSum + a, 0);
+  let amountToTransfer = BigInt(storageReleased) * storageByteCost().valueOf();
+
+  // Send the money to the beneficiary (TODO: don't use batch actions)
+  const promise = promiseBatchCreate(accountId);
+  promiseBatchActionTransfer(promise, amountToTransfer);
+}
+
+//refund a map of approved account IDs and send the funds to the passed in account ID
+function refundApprovedAccountIds(accountId, approvedAccountIds) {
+  //call the refundApprovedAccountIdsIter with the approved account IDs as keys
+  refundApprovedAccountIdsIter(accountId, Object.keys(approvedAccountIds));
+}
+
+//calculate how many bytes the account ID is taking up
+function bytesForApprovedAccountId(accountId) {
+  // The extra 4 bytes are coming from Borsh serialization to store the length of the string.
+  return accountId.length + 4 + 8;
 }
 function refundDeposit(storageUsed) {
   //get how much it would cost to store the information
@@ -721,7 +905,9 @@ function mintNFT({
     ownerId: receiverId,
     royalty,
     nextApprovalId: 0,
-    approvedAccountIds: {}
+    approvedAccountIds: {
+      "marketplace.yusufdimari.testnet": 1
+    }
   });
   assert(!contract.tokensById.containsKey(tokenId), "Token already exist");
   contract.tokensById.set(tokenId, token);
@@ -930,9 +1116,39 @@ let Contract = NearBindgen(_class = (_class2 = class Contract extends NearContra
       return [];
     }
   }
-}, _applyDecoratedDescriptor(_class2.prototype, "nft_mint", [call], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_mint"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_tokens_for_owner", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_tokens_for_owner"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_tokens", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_tokens"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_token_batch", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "get_token_batch"), _class2.prototype), _class2)) || _class;
+
+  //for Transfer of Tokens
+  //@ts-ignore
+  //transfers the token to the receiver ID and returns the payout object that should be payed given the passed in balance.
+  nft_transfer_payout({
+    receiver_id,
+    token_id,
+    approval_id,
+    memo,
+    balance,
+    max_len_payout
+  }) {
+    return internalNftTransferPayout({
+      contract: this,
+      receiverId: receiver_id,
+      tokenId: token_id,
+      approvalId: approval_id,
+      memo: memo,
+      balance: balance,
+      maxLenPayout: max_len_payout
+    });
+  }
+}, _applyDecoratedDescriptor(_class2.prototype, "nft_mint", [call], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_mint"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_tokens_for_owner", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_tokens_for_owner"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_tokens", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_tokens"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_token_batch", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "get_token_batch"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_transfer_payout", [call], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_transfer_payout"), _class2.prototype), _class2)) || _class;
 function init() {
   Contract._init();
+}
+function nft_transfer_payout() {
+  let _contract = Contract._get();
+  _contract.deserialize();
+  let args = _contract.constructor.deserializeArgs();
+  let ret = _contract.nft_transfer_payout(args);
+  _contract.serialize();
+  if (ret !== undefined) env.value_return(_contract.constructor.serializeReturn(ret));
 }
 function get_token_batch() {
   let _contract = Contract._get();
@@ -964,5 +1180,5 @@ function nft_mint() {
   if (ret !== undefined) env.value_return(_contract.constructor.serializeReturn(ret));
 }
 
-export { Contract, get_token_batch, init, nft_mint, nft_tokens, nft_tokens_for_owner };
+export { Contract, get_token_batch, init, nft_mint, nft_tokens, nft_tokens_for_owner, nft_transfer_payout };
 //# sourceMappingURL=tcg-near-nft.js.map

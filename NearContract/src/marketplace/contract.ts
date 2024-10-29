@@ -13,6 +13,11 @@ import {
   get_listings_by_company,
   get_listings_by_owner,
 } from "./listing";
+import {
+  internalOffer,
+  internalRemoveListings,
+  internalResolvePurchase,
+} from "./internal";
 
 //@ts-ignore
 @NearBindgen
@@ -51,6 +56,15 @@ export class Contract extends NearContract {
   }
 
   //@ts-ignore
+  @call
+  nft_unlist({ listings }) {
+    return internalRemoveListings({
+      contract: this,
+      listings,
+    });
+  }
+
+  //@ts-ignore
   @view
   get_all_listings() {
     return get_listings({ contract: this });
@@ -64,5 +78,30 @@ export class Contract extends NearContract {
   @view
   get_owner_listings({ owner_id }) {
     return get_listings_by_owner({ contract: this, owner_id });
+  }
+
+  //Transfer of NFT
+  //@ts-ignore
+  @call
+  //place an offer on a specific sale. The sale will go through as long as your deposit is greater than or equal to the list price
+  offer({
+    nft_contract_id,
+    token_id,
+  }: {
+    nft_contract_id: string;
+    token_id: string;
+  }) {
+    return internalOffer({
+      contract: this,
+      nftContractId: nft_contract_id,
+      tokenId: token_id,
+    });
+  }
+
+  //@ts-ignore
+  @call
+  //place an offer on a specific sale. The sale will go through as long as your deposit is greater than or equal to the list price
+  resolve_purchase({ buyer_id, price }: { buyer_id: string; price: string }) {
+    return internalResolvePurchase({ buyerId: buyer_id, price: price });
   }
 }
