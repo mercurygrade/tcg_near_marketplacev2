@@ -86,15 +86,15 @@ export class Contract extends NearContract {
   //place an offer on a specific sale. The sale will go through as long as your deposit is greater than or equal to the list price
   offer({
     nft_contract_id,
-    token_id,
+    token_ids,
   }: {
     nft_contract_id: string;
-    token_id: string;
+    token_ids: string[];
   }) {
     return internalOffer({
       contract: this,
       nftContractId: nft_contract_id,
-      tokenId: token_id,
+      tokenIds: token_ids,
     });
   }
 

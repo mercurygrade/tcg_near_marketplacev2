@@ -775,36 +775,41 @@ function internalRemoveListings({
 function internalOffer({
   contract,
   nftContractId,
-  tokenId
+  tokenIds
 }) {
   //get the attached deposit and make sure it's greater than 0
   let deposit = attachedDeposit().valueOf();
+  let prices = [];
   assert(deposit > 0, "deposit must be greater than 0");
+
+  //get the buyer ID which is the person who called the function and make sure they're not the owner of the sale
+  let buyerId = predecessorAccountId();
 
   // //get the unique sale ID (contract + DELIMITER + token ID)
   // let contractAndTokenId = `${nftContractId}.${tokenId}`;
   // near.log("contractAndTokenId", contractAndTokenId);
   //get the sale object from the unique sale ID. If the sale doesn't exist, panic.
-  let listing = contract.listings.get(tokenId);
-  if (listing == null) {
-    panic("no sale");
+  for (let key in tokenIds) {
+    let listing = contract.listings.get(tokenIds[key]);
+    if (listing == null) {
+      panic("no sale");
+    }
+    assert(buyerId != listing.owner_id, "you can't offer on your own sale");
+    //get the u128 price of the token (dot 0 converts from U128 to u128)
+    let price = BigInt(listing.sale_price);
+    prices.push(price);
   }
-
-  //get the buyer ID which is the person who called the function and make sure they're not the owner of the sale
-  let buyerId = predecessorAccountId();
-  assert(buyerId != listing.owner_id, "you can't offer on your own sale");
-
-  //get the u128 price of the token (dot 0 converts from U128 to u128)
-  let price = BigInt(listing.sale_price);
+  let totalPrice = prices.reduce((a, b) => a + b);
   //make sure the deposit is greater than the price
-  assert(deposit >= price, "deposit must be greater than or equal to price");
+  assert(deposit >= totalPrice, "deposit must be greater than or equal to price");
+  assert(prices.length == tokenIds.length, "deposit must be greater than or equal to price");
 
   //process the purchase (which will remove the sale, transfer and get the payout from the nft contract, and then distribute royalties)
   processPurchase({
     contract,
     nftContractId,
-    tokenId,
-    price: deposit.toString(),
+    tokenIds,
+    prices: prices.map(p => p.toString()),
     buyerId
   });
 }
@@ -814,51 +819,48 @@ function internalOffer({
 function processPurchase({
   contract,
   nftContractId,
-  tokenId,
-  price,
+  tokenIds,
+  prices,
   buyerId
 }) {
-  //get the sale object by removing the sale
+  // get the sales array by removing the listings
   let {
     sales
   } = internalRemoveListings({
     contract,
-    listings: [tokenId]
+    listings: tokenIds
   });
-  let sale = sales[0];
 
-  //initiate a cross contract call to the nft contract. This will transfer the token to the buyer and return
-  //a payout object used for the market to distribute funds to the appropriate accounts.
-  const promise = promiseBatchCreate(nftContractId);
-  promiseBatchActionFunctionCall(promise, "nft_transfer_payout", bytes(JSON.stringify({
-    receiver_id: buyerId,
-    //purchaser (person to transfer the NFT to)
-    token_id: tokenId,
-    //token ID to transfer
-    approval_id: sale.approval_id,
-    //market contract's approval ID in order to transfer the token on behalf of the owner
-    memo: "payout from market",
-    //memo (to include some context)
-    /*
-                the price that the token was purchased for. This will be used in conjunction with the royalty percentages
-                for the token in order to determine how much money should go to which account. 
-            */
-    balance: price,
-    max_len_payout: 10 //the maximum amount of accounts the market can payout at once (this is limited by GAS)
-  })), 1,
-  // 1 yoctoNEAR
-  GAS_FOR_NFT_TRANSFER);
+  // loop through each sale to initiate the transfer and payout
+  const promises = sales.map((sale, index) => {
+    const tokenId = tokenIds[index];
+    const price = prices[index];
 
-  //after the transfer payout has been initiated, we resolve the promise by calling our own resolve_purchase function.
-  //resolve purchase will take the payout object returned from the nft_transfer_payout and actually pay the accounts
-  promiseThen(promise, currentAccountId(), "resolve_purchase", bytes(JSON.stringify({
-    buyer_id: buyerId,
-    //the buyer and price are passed in incase something goes wrong and we need to refund the buyer
-    price: price
-  })), 0,
-  // no deposit
-  GAS_FOR_ROYALTIES);
-  return promiseReturn(promise);
+    // initiate a cross-contract call for each token transfer
+    const promise = promiseBatchCreate(nftContractId);
+    promiseBatchActionFunctionCall(promise, "nft_transfer_payout", bytes(JSON.stringify({
+      receiver_id: buyerId,
+      token_id: tokenId,
+      approval_id: sale.approval_id,
+      memo: "payout from market",
+      balance: price,
+      max_len_payout: 10
+    })), 1,
+    // 1 yoctoNEAR
+    GAS_FOR_NFT_TRANSFER);
+
+    // resolve purchase for each token transfer
+    promiseThen(promise, currentAccountId(), "resolve_purchase", bytes(JSON.stringify({
+      buyer_id: buyerId,
+      price: price
+    })), 0,
+    // no deposit
+    GAS_FOR_ROYALTIES);
+    return promise;
+  });
+
+  // return the promise for the batch of all token purchases
+  return promiseReturn(promises[promises.length - 1]);
 }
 function internalResolvePurchase({
   buyerId,
@@ -866,34 +868,22 @@ function internalResolvePurchase({
 }) {
   assert(currentAccountId() === predecessorAccountId(), "Only the contract itself can call this method");
 
-  // checking for payout information returned from the nft_transfer_payout method
+  // check for payout information returned from nft_transfer_payout
   let result = promiseResult(0);
   let payout = null;
   if (typeof result === "string") {
-    //if we set the payout_option to None, that means something went wrong and we should refund the buyer
-
     try {
       let payoutOption = JSON.parse(result);
       if (Object.keys(payoutOption.payout).length > 10 || Object.keys(payoutOption.payout).length < 1) {
-        //we'll check if length of the payout object is > 10 or it's empty. In either case, we return None
         throw "Cannot have more than 10 royalties";
-        //if the payout object is the correct length, we move forward
       } else {
-        //we'll keep track of how much the nft contract wants us to payout. Starting at the full price payed by the buyer
         let remainder = BigInt(price);
-        //loop through the payout and subtract the values from the remainder.
-        Object.entries(payoutOption.payout).forEach(([key, value], index) => {
+        Object.entries(payoutOption.payout).forEach(([key, value]) => {
           remainder = remainder - BigInt(value);
         });
-
-        //Check to see if the NFT contract sent back a faulty payout that requires us to pay more or too little.
-        //The remainder will be 0 if the payout summed to the total price. The remainder will be 1 if the royalties
-        //we something like 3333 + 3333 + 3333.
-        if (remainder == BigInt(0) || remainder == BigInt(1)) {
-          //set the payout because nothing went wrong
+        if (remainder === BigInt(0) || remainder === BigInt(1)) {
           payout = payoutOption.payout;
         } else {
-          //if the remainder was anything but 1 or 0, we return None
           throw "Payout is not correct";
         }
       }
@@ -902,20 +892,17 @@ function internalResolvePurchase({
       payout = null;
     }
   }
-
-  //if the payout was null, we refund the buyer for the price they payed and return
   if (payout == null) {
     const promise = promiseBatchCreate(buyerId);
     promiseBatchActionTransfer(promise, BigInt(price));
     return price;
   }
-  // NEAR payouts
+
+  // execute NEAR payouts
   for (let [key, value] of Object.entries(payout)) {
     const promise = promiseBatchCreate(key);
     promiseBatchActionTransfer(promise, BigInt(value));
   }
-
-  //return the price payout out
   return price;
 }
 
@@ -998,12 +985,12 @@ let Contract = NearBindgen(_class = (_class2 = class Contract extends NearContra
   //place an offer on a specific sale. The sale will go through as long as your deposit is greater than or equal to the list price
   offer({
     nft_contract_id,
-    token_id
+    token_ids
   }) {
     return internalOffer({
       contract: this,
       nftContractId: nft_contract_id,
-      tokenId: token_id
+      tokenIds: token_ids
     });
   }
 
