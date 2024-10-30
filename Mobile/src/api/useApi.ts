@@ -8,10 +8,6 @@ import axios from "axios";
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig);
 
-export const URL = true ? "10.206.78.116" : "172.20.10.3";
-export const HOME_NETWORK = "10.206.78.116";
-export const PORT = "5005";
-// export const BASE_URL = `http://${URL}:${PORT}/TrustID/v1`;
 export const BASE_URL = `https://server-yebr4izakq-uc.a.run.app`;
 export const request = axios.create({
   baseURL: BASE_URL,
