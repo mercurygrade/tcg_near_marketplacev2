@@ -6,6 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "platforms": ["ios", "android"],
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
@@ -30,6 +31,12 @@
       "eas": {
         "projectId": "5fe7d5b8-0cbf-4f13-a721-cfddb47042ec"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/5fe7d5b8-0cbf-4f13-a721-cfddb47042ec"
     }
   }
 }

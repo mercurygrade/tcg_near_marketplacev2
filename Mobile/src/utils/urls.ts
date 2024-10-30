@@ -1,18 +1,20 @@
 export default Object.freeze({
   auth: {
-    new: "auth/create-account",
+    new: "/auth/create-account",
+    login: "/auth/login",
   },
   app: {
     profile: {
-      url: "/profile?uid=",
+      url: "/profile",
     },
     wallet: {
       create: "/wallet?uid={{userId}}&username={{username}}",
+      signIn: "/wallet/request-siginurl",
     },
     nft: {
       generateImage: "/generate",
-      url: "/nft?id=",
-      mint: "/nft/mint",
+      url: "/near/nft/nft-tokens-for-owner",
+      mint: "/near/nft/mint",
     },
   },
 });

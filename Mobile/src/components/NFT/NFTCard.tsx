@@ -8,8 +8,10 @@ export default function NFTCard({ nft }: { nft: NFT }) {
       <Image source={{ uri: nft.metadata.media }} style={styles.image} />
       <View style={styles.metadata}>
         <Text style={styles.title}>{nft.metadata.title}</Text>
-        <Text>{nft.metadata.description}</Text>
-        <Text>0.5kg Carbon</Text>
+        {/* <Text>{nft.metadata.description}</Text> */}
+        <Text style={{ textAlign: "center" }}>
+          {parseFloat(nft.metadata?.co2Amount?.toFixed(2))}kg Carbon
+        </Text>
       </View>
     </View>
   );
