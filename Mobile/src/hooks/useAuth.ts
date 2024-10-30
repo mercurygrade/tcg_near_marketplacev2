@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Alert } from "react-native";
-import { getAuth, signInWithEmailAndPassword, User } from "firebase/auth";
+import { User } from "firebase/auth";
 
 import { urls } from "../utils";
-import { request, app } from "../api/useApi";
+import { request, addParamToUrl } from "../api/useApi";
 import { useAppContext } from "../provider/Appprovider";
 
 interface fdata {
@@ -14,21 +14,22 @@ interface fdata {
 export default function useAuth() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { setUser, user } = useAppContext();
-  const auth = getAuth(app);
 
-  const login = async (fdata: fdata) => {
+  const login = async ({ email, password }: fdata) => {
     setIsLoading(true);
     try {
-      const { user } = await signInWithEmailAndPassword(
-        auth,
-        fdata.email,
-        fdata.password
+      const { data } = await request.post(
+        addParamToUrl(urls.auth.login, { email, password })
       );
-      const { data } = await request.get(urls.app.profile.url + user.uid);
-      Alert.alert("Success", "Logged In");
-      setUser(data.data);
+      if (data.success) {
+        const { data: res } = await request.get(
+          addParamToUrl(urls.app.profile.url, { id: data.payload.uid })
+        );
+        Alert.alert("Success", "Logged In");
+        setUser({ uid: data.payload.uid, ...res.user });
+      }
     } catch (error) {
-      console.error(error);
+      console.error(error.response.data);
     } finally {
       setIsLoading(false);
     }

@@ -44,21 +44,23 @@ export default function Home({ navigation }) {
     }
   };
 
-  const onSubmit = () => openNearWallet();
-  //check if the user has a wallet connected to the account
-  // user.isWalletConnected ? mintNFT() : navigate(screens.app.wallet.create);
+  const onSubmit = () => {
+    //check if the user has a wallet connected to the account
+    user.near_wallet.account_id
+      ? mintNFT()
+      : navigate(screens.app.wallet.create);
+  };
 
-  const buttonTitle = "Connect Wallet";
-  // user.isWalletConnected
-  //   ? "Simulate Trip Completed"
-  //   : "Connect to Wallet";
+  const buttonTitle = user.near_wallet.account_id
+    ? "Simulate Trip Completed"
+    : "Connect to Wallet";
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.container}>
-        <Text>Full Name: {user.displayName}</Text>
+        <Text>Full Name: {user.full_name}</Text>
         <Text>Email Address: {user.email}</Text>
-        <Text>Wallet Username: {user.walletUsername}</Text>
-        {user.isWalletConnected && (
+        <Text>Wallet Username: {user.near_wallet.account_id}</Text>
+        {user.near_wallet.account_id && (
           <>
             <Text style={styles.title}>Minted NFTs</Text>
             <FlatList

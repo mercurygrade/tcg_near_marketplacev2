@@ -8,6 +8,8 @@
     "build:new": "near-sdk-js build src/NewContract.ts build/trustid-near-new.wasm",
     "build:nft": "near-sdk-js build src/nft/nftcontract.ts build/tcg-near-nft.wasm",
     "deploy:nft": "near deploy nft.yusufdimari.testnet build/tcg-near-nft.wasm",
+    "create:nft": "near create-account nft.yusufdimari.testnet --masterAccount yusufdimari.testnet --initialBalance 10",
+    "delete:nft": "near delete-account nft.yusufdimari.testnet yusufdimari.testnet",
     "buildAndDeploy:nft": "npm run build:nft && npm run deploy:nft",
     "build:marketplace": "near-sdk-js build src/marketplace/contract.ts build/tcg-near-marketplace.wasm",
     "deploy:marketplace": "near deploy marketplace.yusufdimari.testnet build/tcg-near-marketplace.wasm",

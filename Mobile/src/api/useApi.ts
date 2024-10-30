@@ -8,11 +8,33 @@ import axios from "axios";
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig);
 
-export const URL = false ? "10.206.78.116" : "172.20.10.3";
+export const URL = true ? "10.206.78.116" : "172.20.10.3";
 export const HOME_NETWORK = "10.206.78.116";
 export const PORT = "5005";
-export const BASE_URL = `http://${URL}:${PORT}/TrustID/v1`;
-// export const BASE_URL = process.env.BASE_URL;
+// export const BASE_URL = `http://${URL}:${PORT}/TrustID/v1`;
+export const BASE_URL = `https://server-yebr4izakq-uc.a.run.app`;
+export const request = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    Authorization: `Bearer thecarbongroup-access-token`,
+  },
+});
 
-export const request = axios.create({ baseURL: BASE_URL });
-console.log(request.getUri());
+export const addParamToUrl = (
+  url: string,
+  params: Record<string, string | number> | string
+) => {
+  let updatedUrl = url;
+  if (typeof params == "string") {
+    updatedUrl.includes("?")
+      ? (updatedUrl += `&${[params]}=${params}`)
+      : (updatedUrl += `?${[params]}=${params}`);
+    return updatedUrl;
+  }
+  for (const key in params) {
+    updatedUrl.includes("?")
+      ? (updatedUrl += `&${key}=${params[key]}`)
+      : (updatedUrl += `?${key}=${params[key]}`);
+  }
+  return updatedUrl;
+};

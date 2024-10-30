@@ -7,8 +7,8 @@ export default function AuthHandler() {
 
   //default credentials for Testing purpose
   const [fdata, setFdata] = useState({
-    email: "testaccount5@tcg.com",
-    password: "Test@123",
+    email: "passenger1new@gmail.com",
+    password: "123456",
   });
 
   const { login, signUp, isLoading } = useAuth();

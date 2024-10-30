@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, TextInput, View, Text } from "react-native";
 
 import { useWallet } from "../../../hooks";
@@ -9,17 +9,16 @@ export default function ConnectWallet({ navigation }) {
   const [username, setUsername] = useState("");
   const { connectToWallet, isLoading } = useWallet();
 
-  const onSubmit = async () => {
-    const walletCreated = await connectToWallet(username);
-    if (walletCreated) goBack();
-  };
+  useEffect(() => {
+    connectToWallet();
+  }, []);
 
   return (
     <View style={styles.container}>
       <Text style={styles.closeButton} onPress={goBack}>
         Cancel
       </Text>
-      <View style={styles.inputContainer}>
+      {/* <View style={styles.inputContainer}>
         <TextInput
           style={styles.inputField}
           placeholder="Wallet Username"
@@ -27,12 +26,12 @@ export default function ConnectWallet({ navigation }) {
           autoCorrect={false}
           onChangeText={(t) => setUsername(t.trim())}
         />
-      </View>
+      </View> */}
 
       <Button
-        title="Connect to Wallet"
+        title="Done"
         isLoading={isLoading}
-        onPress={onSubmit}
+        // onPress={onSubmit}
       />
     </View>
   );

@@ -31,6 +31,7 @@ export interface NFT {
 
 export type NFTMetadata = {
   title?: string;
+  co2Amount?: number;
   description?: string;
   media?: string;
   media_hash?: string;

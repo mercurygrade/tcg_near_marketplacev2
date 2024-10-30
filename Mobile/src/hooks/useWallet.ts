@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { Alert } from "react-native";
+import { Alert, Linking } from "react-native";
 import * as Clipboard from "expo-clipboard";
 
 import { urls } from "../utils";
-import { request } from "../api/useApi";
+import { addParamToUrl, request } from "../api/useApi";
 import { useAppContext } from "../provider/Appprovider";
 
 export default function useWallet() {
   const { user, setUser } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
+  const wallet_id = user.near_wallet?.account_id;
 
   const onSeedPhraseCopied = (seedPhrase: string) => {
     if (typeof seedPhrase != "string") return;
@@ -17,49 +18,32 @@ export default function useWallet() {
   };
 
   //creaete a new Wallet for the user
-  const connectToWallet = async (username: string) => {
+  const connectToWallet = async () => {
     //check if User already has a wallet
-    if (user.isWalletConnected)
+    if (wallet_id)
       return Alert.alert(
         "Already Connected",
         "This User already has a wallet connected"
       );
+    if (!user.uid) return Alert.alert("Error", "Invalid User");
 
     //ensure a username for the wallet has been provided
-    if (!username) return Alert.alert("Error", "Username not provided");
     setIsLoading(true);
 
     try {
       const { data } = await request.post(
-        urls.app.wallet.create
-          .replace("{{username}}", username)
-          .replace("{{userId}}", user.uid)
+        addParamToUrl(urls.app.wallet.signIn, { uid: user.uid })
       );
       if (data.error) {
-        console.error(data.error.message);
-        Alert.alert("Error", data.message);
+        console.error(data.error);
+        Alert.alert("Error", "An Error occured");
         return false;
       }
-
-      setUser(data.data.user);
-      Alert.alert(
-        "Wallet Created",
-        `Your SeedPhrase will only be displayed once, please keep it securely:\n '${data.data.seedPhrase}'`,
-        [
-          {
-            text: "Copy to Clipboard",
-            onPress: () => onSeedPhraseCopied(data.data.seedPhrase),
-          },
-        ]
-      );
-      console.log(data.data);
-      return data.data.final_execution_status.includes("EXECUTED");
+      if (data.url) {
+        Linking.openURL(data.url);
+      }
     } catch (error) {
-      console.error(error.response.data.error);
-      const errorMessage =
-        error.response.data.error.message || "An Error Occured";
-      Alert.alert("Error", errorMessage);
-      return false;
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
