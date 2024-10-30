@@ -3,15 +3,22 @@ import { StyleSheet, TextInput, View, Text } from "react-native";
 
 import { useWallet } from "../../../hooks";
 import { Button } from "../../../components";
+import useProfile from "../../../hooks/useProfile";
 
 export default function ConnectWallet({ navigation }) {
   const { goBack } = navigation;
   const [username, setUsername] = useState("");
+  const { getProfileInfo } = useProfile();
   const { connectToWallet, isLoading } = useWallet();
 
   useEffect(() => {
     connectToWallet();
   }, []);
+
+  const onSubmit = () => {
+    getProfileInfo();
+    goBack();
+  };
 
   return (
     <View style={styles.container}>
@@ -28,11 +35,7 @@ export default function ConnectWallet({ navigation }) {
         />
       </View> */}
 
-      <Button
-        title="Done"
-        isLoading={isLoading}
-        // onPress={onSubmit}
-      />
+      <Button title="Done" isLoading={isLoading} onPress={onSubmit} />
     </View>
   );
 }

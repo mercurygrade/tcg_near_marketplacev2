@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, SafeAreaView, Alert } from "react-native";
 import * as Linking from "expo-linking";
 
 import { useNFT } from "../../../hooks";
-import { screens, urls } from "../../../utils";
+import { screens } from "../../../utils";
 import { NFTCard, Button } from "../../../components";
 import { useAppContext } from "../../../provider/Appprovider";
 import { FlatList } from "react-native-gesture-handler";
@@ -15,7 +15,7 @@ export default function Home({ navigation }) {
 
   useEffect(() => {
     getNFTs();
-  }, []);
+  }, [user]);
 
   const openNearWallet = async () => {
     // const nearWalletUrl =
@@ -74,7 +74,6 @@ export default function Home({ navigation }) {
           </>
         )}
       </View>
-
       <Button title={buttonTitle} onPress={onSubmit} isLoading={isLoading} />
     </SafeAreaView>
   );
