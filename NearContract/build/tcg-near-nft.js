@@ -647,6 +647,46 @@ function restoreOwners(collection) {
   }
   return UnorderedSet.deserialize(collection);
 }
+
+// Burn function to remove an NFT from circulation
+function internalBurnToken({
+  contract,
+  token_ids,
+  owner_id
+}) {
+  token_ids.forEach(token_id => {
+    // Check if the token exists in tokensById
+    const token = contract.tokensById.get(token_id);
+    if (!token) {
+      throw new Error("Token does not exist.");
+    }
+
+    // Ensure that the caller is the token owner or the contract owner
+    if (token.owner_id !== owner_id && owner_id !== contract.owner_id) {
+      throw new Error("Only the token owner or contract owner can burn contract token.");
+    }
+
+    // Remove the token from tokensById
+    contract.tokensById.remove(token_id);
+
+    // Remove the token metadata
+    contract.tokenMetadataById.remove(token_id);
+
+    // Update the tokensPerOwner map
+    let ownerTokens = restoreOwners(contract.tokensPerOwner.get(token.owner_id));
+    if (ownerTokens == null) {
+      panic("No Tokens found for owner");
+    }
+    ownerTokens.remove(token_id);
+    if (ownerTokens.isEmpty()) {
+      contract.tokensPerOwner.remove(owner_id);
+    } else {
+      contract.tokensPerOwner.set(token.owner_id, ownerTokens);
+    }
+    // Log the burn event (optional)
+    log(`Token ${token_id} burned by owner ${owner_id}`);
+  });
+}
 function internalAddTokenToOwner(contract, accountId, tokenId) {
   // Ensure consistency in how you create new UnorderedSets
   let tokenSet = restoreOwners(contract.tokensPerOwner.get(accountId));
@@ -1062,6 +1102,19 @@ let Contract = NearBindgen(_class = (_class2 = class Contract extends NearContra
       perpetual_royalties
     });
   }
+
+  //@ts-ignore
+  nft_burn({
+    owner_id,
+    token_ids
+  }) {
+    return internalBurnToken({
+      contract: this,
+      owner_id,
+      token_ids
+    });
+  }
+
   //@ts-ignore
   nft_tokens_for_owner({
     account_id,
@@ -1138,7 +1191,7 @@ let Contract = NearBindgen(_class = (_class2 = class Contract extends NearContra
       maxLenPayout: max_len_payout
     });
   }
-}, _applyDecoratedDescriptor(_class2.prototype, "nft_mint", [call], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_mint"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_tokens_for_owner", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_tokens_for_owner"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_tokens", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_tokens"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_token_batch", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "get_token_batch"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_transfer_payout", [call], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_transfer_payout"), _class2.prototype), _class2)) || _class;
+}, _applyDecoratedDescriptor(_class2.prototype, "nft_mint", [call], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_mint"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_burn", [call], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_burn"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_tokens_for_owner", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_tokens_for_owner"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_tokens", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_tokens"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "get_token_batch", [view], Object.getOwnPropertyDescriptor(_class2.prototype, "get_token_batch"), _class2.prototype), _applyDecoratedDescriptor(_class2.prototype, "nft_transfer_payout", [call], Object.getOwnPropertyDescriptor(_class2.prototype, "nft_transfer_payout"), _class2.prototype), _class2)) || _class;
 function init() {
   Contract._init();
 }
@@ -1171,6 +1224,14 @@ function nft_tokens_for_owner() {
   let ret = _contract.nft_tokens_for_owner(args);
   if (ret !== undefined) env.value_return(_contract.constructor.serializeReturn(ret));
 }
+function nft_burn() {
+  let _contract = Contract._get();
+  _contract.deserialize();
+  let args = _contract.constructor.deserializeArgs();
+  let ret = _contract.nft_burn(args);
+  _contract.serialize();
+  if (ret !== undefined) env.value_return(_contract.constructor.serializeReturn(ret));
+}
 function nft_mint() {
   let _contract = Contract._get();
   _contract.deserialize();
@@ -1180,5 +1241,5 @@ function nft_mint() {
   if (ret !== undefined) env.value_return(_contract.constructor.serializeReturn(ret));
 }
 
-export { Contract, get_token_batch, init, nft_mint, nft_tokens, nft_tokens_for_owner, nft_transfer_payout };
+export { Contract, get_token_batch, init, nft_burn, nft_mint, nft_tokens, nft_tokens_for_owner, nft_transfer_payout };
 //# sourceMappingURL=tcg-near-nft.js.map

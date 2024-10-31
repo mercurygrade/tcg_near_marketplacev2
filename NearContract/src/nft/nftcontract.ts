@@ -9,7 +9,7 @@ import {
 } from "near-sdk-js";
 import { NFTContractMetadata, Token, TokenMetadata } from "./metadata";
 import { mintNFT, getOwnerTokens, getTokens, getTokenBatch } from "./mint";
-import { internalNftTransferPayout } from "./internal";
+import { internalBurnToken, internalNftTransferPayout } from "./internal";
 
 //@ts-ignore
 @NearBindgen
@@ -50,6 +50,13 @@ export class Contract extends NearContract {
       perpetual_royalties,
     });
   }
+
+  //@ts-ignore
+  @call
+  nft_burn({ owner_id, token_ids }) {
+    return internalBurnToken({ contract: this, owner_id, token_ids });
+  }
+
   //@ts-ignore
   @view
   nft_tokens_for_owner({ account_id, from_index, limit }) {
