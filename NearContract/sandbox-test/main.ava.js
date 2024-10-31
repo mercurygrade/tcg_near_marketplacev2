@@ -30,40 +30,6 @@ test.afterEach.always(async (t) => {
   });
 });
 
-// test("Creates a DID", async (t) => {
-//   const { contract } = t.context.accounts;
-//   // const didDocument = await contract.view("getDID", {
-//   //   id: "yusufdimari.testnet",
-//   // });
-//   // t.is(didDocument, "DID Document" || null);
-//   const publicKey = "example-public-key";
-//   const serviceEndpoint = "https://example.com";
-
-//   const didDocument = await contract.call("createDID", {
-//     publicKey,
-//     serviceEndpoint,
-//   });
-
-//   t.is(didDocument.id, "test-account.test.near");
-//   t.is(didDocument.publicKey, publicKey);
-//   t.is(didDocument.serviceEndpoint, serviceEndpoint);
-// });
-test("Get Tokens", async (t) => {
-  const { contract } = t.context.accounts;
-  // const didDocument = await contract.view("getDID", {
-  //   id: "yusufdimari.testnet",
-  // });
-  // t.is(didDocument, "DID Document" || null);
-
-  const nft = await contract.view("nft_tokens_for_owner", {
-    account_id: "yusufdimari2.testnet",
-  });
-
-  t.log(nft);
-  // t.is(didDocument.publicKey, publicKey);
-  // t.is(didDocument.serviceEndpoint, serviceEndpoint);
-});
-
 // test('changes the greeting', async (t) => {
 //   const { root, contract } = t.context.accounts;
 //   await root.call(contract, 'set_greeting', { greeting: 'Howdy' });

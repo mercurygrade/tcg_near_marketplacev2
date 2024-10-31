@@ -2,13 +2,12 @@
 import { initializeApp } from "firebase/app";
 import firebaseConfig from "../../firebaseConfig.json";
 import axios from "axios";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+//@ts-ignore
+import { BASE_URL } from "@env";
 
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig);
 
-export const BASE_URL = `https://server-yebr4izakq-uc.a.run.app`;
 export const request = axios.create({
   baseURL: BASE_URL,
   headers: {
