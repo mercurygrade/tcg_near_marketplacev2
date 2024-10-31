@@ -160,7 +160,7 @@ export function internalTransfer(
   let newToken = new Token({
     ownerId: receiverId,
     //reset the approval account IDs
-    approvedAccountIds: { "marketplace.yusufdimari.testnet": 1 },
+    approvedAccountIds: {},
     nextApprovalId: token.next_approval_id,
     //we copy over the royalties from the previous token
     royalty: token.royalty,
