@@ -14,7 +14,7 @@ export default function Home({ navigation }) {
   const { mintNFT, getNFTs, isLoading } = useNFT();
 
   useEffect(() => {
-    getNFTs();
+    // getNFTs();
   }, [user]);
 
   const openNearWallet = async () => {
@@ -60,7 +60,7 @@ export default function Home({ navigation }) {
         <Text>Full Name: {user.full_name}</Text>
         <Text>Email Address: {user.email}</Text>
         <Text>Wallet Username: {user.near_wallet.account_id}</Text>
-        {user.near_wallet.account_id && (
+        {/* {user.near_wallet.account_id && (
           <>
             <Text style={styles.title}>Minted NFTs</Text>
             <FlatList
@@ -72,7 +72,7 @@ export default function Home({ navigation }) {
               )}
             />
           </>
-        )}
+        )} */}
       </View>
       <Button title={buttonTitle} onPress={onSubmit} isLoading={isLoading} />
     </SafeAreaView>

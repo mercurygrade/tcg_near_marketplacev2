@@ -3,6 +3,8 @@ import { useState } from "react";
 import { urls } from "../utils";
 import { addParamToUrl, request } from "../api/useApi";
 import { useAppContext } from "../provider/Appprovider";
+//@ts-ignore
+import { TRIP } from "@env";
 
 export default function useNFT() {
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +31,9 @@ export default function useNFT() {
   };
 
   const mintNFT = async () => {
-    if (!wallet_id) return;
+    if (!wallet_id || !TRIP) return;
+    const trip = JSON.parse(TRIP);
+
     setIsLoading(true);
     try {
       const { data } = await request.post(urls.app.nft.mint, trip);
@@ -60,27 +64,3 @@ export default function useNFT() {
 
   return { isLoading, getNFTs, mintNFT };
 }
-
-const trip = {
-  validTrip: false,
-  status: "picked-up",
-  id: "u1poB3dlZ2asShmQlq9u5wE2OUB3",
-  corporate: "7Dbgl5Ja0KEjUgwzQkTD",
-  credits: 11.4,
-  co2Amount: 1.7476648399669303,
-  name: "Joana",
-  wallet_id: "test1.yusufdimari.testnet",
-  seat: 4,
-  avatar:
-    "https://storage.googleapis.com/thecarbongames.appspot.com/compressed_avatars%2Ffemale_shirt_white_Avatarz_white_050.png",
-  location: {
-    coordinates: {
-      latitude: 38.769107,
-      longitude: -9.346284,
-    },
-    geohash: "eycke3dnrv",
-    address:
-      "Núcleo Empres. Abrunheira, Zona Poente - Pav. 7, 2635-634 Rio de Mouro, Portugal",
-  },
-  username: null,
-};

@@ -29,7 +29,7 @@ export default function useAuth() {
         setUser({ uid: data.payload.uid, ...res.user });
       }
     } catch (error) {
-      console.error(error.response.data);
+      console.error(error.response?.data ?? error);
     } finally {
       setIsLoading(false);
     }

@@ -10,6 +10,54 @@ export function restoreOwners(collection) {
   return UnorderedSet.deserialize(collection as UnorderedSet);
 }
 
+// Burn function to remove an NFT from circulation
+export function internalBurnToken({
+  contract,
+  token_ids,
+  owner_id,
+}: {
+  contract: Contract;
+  token_ids: string[];
+  owner_id: string;
+}) {
+  token_ids.forEach((token_id) => {
+    // Check if the token exists in tokensById
+    const token = contract.tokensById.get(token_id) as Token;
+    if (!token) {
+      throw new Error("Token does not exist.");
+    }
+
+    // Ensure that the caller is the token owner or the contract owner
+    if (token.owner_id !== owner_id && owner_id !== contract.owner_id) {
+      throw new Error(
+        "Only the token owner or contract owner can burn contract token."
+      );
+    }
+
+    // Remove the token from tokensById
+    contract.tokensById.remove(token_id);
+
+    // Remove the token metadata
+    contract.tokenMetadataById.remove(token_id);
+
+    // Update the tokensPerOwner map
+    let ownerTokens = restoreOwners(
+      contract.tokensPerOwner.get(token.owner_id)
+    );
+    if (ownerTokens == null) {
+      near.panic("No Tokens found for owner");
+    }
+    ownerTokens.remove(token_id);
+    if (ownerTokens.isEmpty()) {
+      contract.tokensPerOwner.remove(owner_id);
+    } else {
+      contract.tokensPerOwner.set(token.owner_id, ownerTokens);
+    }
+    // Log the burn event (optional)
+    near.log(`Token ${token_id} burned by owner ${owner_id}`);
+  });
+}
+
 export function internalAddTokenToOwner(
   contract: Contract,
   accountId: string,
@@ -112,7 +160,7 @@ export function internalTransfer(
   let newToken = new Token({
     ownerId: receiverId,
     //reset the approval account IDs
-    approvedAccountIds: { "marketplace.yusufdimari.testnet": 1 },
+    approvedAccountIds: {},
     nextApprovalId: token.next_approval_id,
     //we copy over the royalties from the previous token
     royalty: token.royalty,

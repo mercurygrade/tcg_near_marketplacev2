@@ -36,16 +36,16 @@
     "react-native-dotenv": "^3.4.11"
   },
   "private": true,
-  "description": "Backend for TustID using Near blockchain",
+  "description": "Mobile and Smart Contract for TCG using Near blockchain",
   "repository": {
     "type": "git",
-    "url": "github.com/yusufdimari/trustid.git"
+    "url": "github.com/mercurygrade/tcg_near_marketplacev2.git"
   },
   "keywords": [
-    "TrustID",
+    "TCG",
     "Near",
     "Nearjs"
   ],
-  "author": "yusufdimari",
+  "author": "TheCarbonGroup",
   "license": "ISC"
 }
